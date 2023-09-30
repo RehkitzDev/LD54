@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WASM Example</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <canvas oncontextmenu='return false;' style="width: 100%; height: 100%;" id="canvas"></canvas>
+    <script type="module" type="text/javascript">
+        import "./runtime.js";
+
+        document.getElementById("canvas").width = window.innerWidth;
+        document.getElementById("canvas").height = window.innerHeight;
+        window.addEventListener("resize", function(evt) {
+            document.getElementById("canvas").width = window.innerWidth;
+            document.getElementById("canvas").height = window.innerHeight;
+        });
+
+        let ws = new WebSocket("ws://localhost:8001");
+        ws.onopen = function() {
+            console.log("Opened connection to hotreload server");
+        };
+        ws.onmessage = function(evt) {
+            console.log("Received message: " + evt.data)
+            if (evt.data == "reload") {
+                window.location.reload();
+            }
+        };
+
+        let start = async () =>{
+            const custom_console = {};
+            odin.runWasm("bin/game.wasm", custom_console);
+        }
+        start()
+
+        // window.addEventListener("keydown", function(evt) {
+        //     console.log("Keydown: " + evt.key);
+        // });
+
+    </script>
+</body>
+</html>
