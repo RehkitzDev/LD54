@@ -20,7 +20,7 @@ menu_buttons: [1]Menu_Button = {
 		text = "PLAY",
 		pos = juice.tween_create(juice.Vec2{Game_Size.x / 2, Game_Size.y / 2}),
 		size = juice.tween_create(juice.Vec2{140, 80}),
-		color = juice.tween_create(Colors.yellow),
+		color = juice.tween_create(Colors.white),
 		text_size = juice.tween_create(f32(40)),
 	},
 }
@@ -82,7 +82,7 @@ draw_menu :: proc() {
 		{Game_Size.x / 2, 40},
 		30,
 		"Something about limited Space",
-		color = Colors.yellow,
+		color = Colors.white,
 		origin = Origin_Center,
 		max_width = Game_Size.x / 2,
 	)
@@ -92,7 +92,7 @@ draw_menu :: proc() {
 		{Game_Size.x / 2, Game_Size.y - 20},
 		12,
 		"LD54 entry\na game by rehkitzdev",
-		color = Colors.yellow,
+		color = Colors.white,
 		origin = Origin_Center,
 	)
 

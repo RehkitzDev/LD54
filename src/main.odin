@@ -27,14 +27,14 @@ load_fonts :: proc(){
 	Fonts.little_guy = juice.load_bmfont(#load("../assets/little_guy.fnt", string), #load("../assets/little_guy.png"))
 }
 Colors_Struct :: struct{
-	grey: juice.Color,
-	yellow: juice.Color,
-	orange: juice.Color,
+	black: juice.Color,
+	white: juice.Color,
+	red: juice.Color,
 }
 Colors : Colors_Struct = {
-	grey = juice.color_from_rgba(47, 60, 79, 255),
-	yellow = juice.color_from_rgba(252, 176, 64, 255),
-	orange = juice.color_from_rgba(222, 112, 59, 255),
+	black = juice.Color{0, 0, 0, 1},
+	white = juice.Color{1, 1, 1, 1},
+	red = juice.Color{1, 0, 0, 1},
 }
 
 Game_Size : juice.Vec2 = {640, 360}
@@ -106,7 +106,7 @@ main :: proc() {
 			clear_color({0, 0, 0, 1})
 
 			use_framebuffer(fb, Game_Camera)
-			clear_color(Colors.grey)
+			clear_color(Colors.black)
 
 			// draw
 			switch Game_Scene{
