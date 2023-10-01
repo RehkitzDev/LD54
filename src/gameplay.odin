@@ -15,7 +15,7 @@ Enemy :: struct{
 	cur_hp: f32,
 	hp: f32,
 	velocity: juice.Vec2,
-	collision: bool,
+	golden :bool,
 	dead: bool,
 }
 Delayed_Enemy :: struct{
@@ -39,8 +39,13 @@ Player :: struct{
 	bullet_spawner: juice.Timer,
 	bullet_dir: juice.Vec2,
 	muzzle_flash: juice.Tween(juice.Color),
+	shoot_cd: f32,
+	dmg: f32,
 }
 player: Player
+lost :bool
+kills :u64
+mouse_dir :juice.Vec2
 Bullet :: struct{
 	pos: juice.Vec2,
 	size: juice.Vec2,
@@ -62,16 +67,29 @@ Effects: [dynamic]Effect
 
 Walls: [4]juice.Rect
 enemy_spawner := juice.timer(5)
+spawn_amount_min :f32= 1
+spawn_amount_max :f32= 2
 
 
 
 init_game :: proc() {
 	using juice
+
+	lost = false
+	kills = 0
+	clear(&Enemies)
+	clear(&Delayed_Enemies)
+	clear(&Spawners)
+	clear(&Bullets)
+	clear(&Effects)
+
 	// player init
 	player = Player{
 		pos = tween_create(juice.Vec2{Game_Size.x / 2., Game_Size.y / 2.}),
 		size = tween_create(f32(10)),
 		color = tween_create(Colors.white),
+		shoot_cd = 0.3,
+		dmg = 5,
 	}
 
 	width :f32= 2
@@ -81,7 +99,10 @@ init_game :: proc() {
 	Walls[3] = collision_rect_from_pos_size(Vec2{0,Game_Size.y},Vec2{Game_Size.x, width}, Origin_Bottom_Left)
 
 	Game_Camera.zoom = 1
+	enemy_spawner = juice.timer(5)
 	enemy_spawner.cur = enemy_spawner.time
+	spawn_amount_min = 1
+	spawn_amount_max = 2
 }
 
 collision :: proc(){
@@ -91,12 +112,14 @@ collision :: proc(){
 		add_collision_object(u32(i), 1, 0, w)
 	}
 	for &e, i in Enemies {
-		e.collision = false
 		add_collision_object(u32(i), 2, 0, collision_rect_from_pos_size(e.pos.value, e.size.value * 2, Origin_Center))
 	}
 	for &b, i in Bullets {
 		add_collision_object(u32(i), 3, 0, collision_rect_from_pos_size(b.pos, Vec2{10,2}, Origin_Center))
 	}
+
+	// add player
+	add_collision_object(0, 5, 0, collision_rect_from_pos_size(player.pos.value, player.size.value * 2, Origin_Center))
 
 	collision := get_collisions();
 	// collision resolution
@@ -122,17 +145,18 @@ collision :: proc(){
 			Enemies[c.id2].velocity += glm.normalize(Bullets[c.id1].dir) * 1
 			// Enemies[c.id2].size.value -= 2
 
-			dmg :f32= 5
-			Enemies[c.id2].cur_hp -= dmg
+			Enemies[c.id2].cur_hp -= player.dmg
 			if Enemies[c.id2].cur_hp <= 0 {
 				Enemies[c.id2].dead = true
+				kills += 1
+				juice.play_sound(Sounds.dead, 0.5, rand(0.9, 1.))
 
 				// death effect
 				size := Enemies[c.id2].size.value
 				e := Effect{
 					pos = tween_create(Enemies[c.id2].pos.value),
 					size = tween_create(juice.Vec2{size, size}),
-					color = tween_create(Colors.white),
+					color = tween_create(Enemies[c.id2].color.original),
 					dead_timer = timer(0.2),
 					update = proc(e: ^Effect, step: f32) {
 						if timer_after(&e.dead_timer, step) {
@@ -146,6 +170,54 @@ collision :: proc(){
 				tween_to(&e.size, e.dead_timer.time, juice.Vec2{size, size}, juice.Vec2{size, size} * 3, Ease.Cubic_Out)
 				tween_to(&e.color, e.dead_timer.time, Colors.white, juice.Color{1,1,1,0}, Ease.Cubic_Out)
 				append(&Effects, e)
+
+				if Enemies[c.id2].golden{
+					rnd := rand_int(0, 2)
+					if rnd == 0{
+						player.shoot_cd -= 0.02
+
+						e := Effect{
+							pos = tween_create(Enemies[c.id2].pos.value),
+							color = tween_create(Colors.gold),
+							dead_timer = timer(4),
+							update = proc(e: ^Effect, step: f32) {
+								if timer_after(&e.dead_timer, step) {
+									e.dead = true
+								}
+							},
+							draw = proc(e: ^Effect) {
+								juice.draw_text(Fonts.little_guy, e.pos.value, 15, "+ ATKSPD", 0, color = e.color.value, origin = Origin_Center)
+							},
+						}
+						tween_to(&e.pos, e.dead_timer.time, e.pos.original, e.pos.original + {0, -50}, Ease.Cubic_Out)
+						tween_to(&e.color, e.dead_timer.time, Colors.gold, juice.Color{Colors.gold.r, Colors.gold.g, Colors.gold.b, 0}, Ease.Cubic_Out)
+						append(&Effects, e)
+					}
+					if rnd == 1{
+						player.dmg += 0.25
+
+						e := Effect{
+							pos = tween_create(Enemies[c.id2].pos.value),
+							color = tween_create(Colors.gold),
+							dead_timer = timer(4),
+							update = proc(e: ^Effect, step: f32) {
+								if timer_after(&e.dead_timer, step) {
+									e.dead = true
+								}
+							},
+							draw = proc(e: ^Effect) {
+								juice.draw_text(Fonts.little_guy, e.pos.value, 15, "+ DMG", 0, color = e.color.value, origin = Origin_Center)
+							},
+						}
+						tween_to(&e.pos, e.dead_timer.time, e.pos.original, e.pos.original + {0, -50}, Ease.Cubic_Out)
+						tween_to(&e.color, e.dead_timer.time, Colors.gold, juice.Color{Colors.gold.r, Colors.gold.g, Colors.gold.b, 0}, Ease.Cubic_Out)
+						append(&Effects, e)
+					}
+				}
+			}
+			else{
+				hp_percent := Enemies[c.id2].cur_hp / Enemies[c.id2].hp
+				juice.play_sound(Sounds.dead, 0.5, 2.5 - hp_percent)
 			}
 
 			// hit effect
@@ -169,6 +241,11 @@ collision :: proc(){
 			append(&Effects, e)
 		}
 
+		// player enemy
+		if c.type_1 == 5 && c.type_2 == 2 && !lost {
+			lost = true
+		}
+
 		// bullet wall
 		if c.type_1 == 3 && c.type_2 == 1 {
 			Bullets[c.id1].dead = true
@@ -188,6 +265,8 @@ collision :: proc(){
 			}
 			tween_to(&e.color, e.dead_timer.time, Colors.white, juice.Color{1,1,1,0}, Ease.Quartic_Out)
 			append(&Effects, e)
+
+			juice.play_sound(Sounds.wall, 0.1, rand(1.6, 1.8))
 		}
 
 		// wall enemy
@@ -223,11 +302,22 @@ update_game :: proc(step: f32) {
     using juice
     // player update
 	
-	player.bullet_dir = dir_start_end(player.pos.value, game_mouse_pos())
+	gamepad_x := gamepad_axis(.Left_Stick_X)
+	gamepad_y := gamepad_axis(.Left_Stick_Y)
+
+	if (gamepad_x > 0.5 || gamepad_x < -0.5) || (gamepad_y > 0.5 || gamepad_y < -0.5){
+		mouse_dir = glm.normalize(Vec2{gamepad_x, gamepad_y})
+	}
+	if mouse_moved(){
+		pos := game_mouse_pos()
+		mouse_dir = glm.normalize(pos - player.pos.value)
+	}
+
+	player.bullet_dir = mouse_dir
 
 	tween_update(&player.muzzle_flash, step)
-	if mouse_button_pressed(.Left) {
-		if timer_every(&player.bullet_spawner, step, 0.1) {
+	if !lost && (mouse_button_pressed(.Left) || gamepad_pressed(.A)){
+		if timer_every(&player.bullet_spawner, step, player.shoot_cd) {
 			append(&Bullets, Bullet{
 				pos = player.pos.value + player.bullet_dir * (player.size.value + 4),
 				dir = player.bullet_dir,
@@ -249,8 +339,8 @@ update_game :: proc(step: f32) {
 
 	// spawner
 	{
-		if timer_every(&enemy_spawner, step) {
-			amount := rand_int(5, 10)
+		if !lost && timer_every(&enemy_spawner, step) {
+			amount := rand_int(int(spawn_amount_min), int(spawn_amount_max))
 			// spawn_pos := Vec2{rand(10, Game_Size.x - 10), rand(10, Game_Size.y - 10)}
 			spawn_pos := Vec2{0,0}
 			dir := rand_int(0, 4)
@@ -285,6 +375,13 @@ update_game :: proc(step: f32) {
 				dead = timer(4),
 			})
 			for i in 0 ..< amount {
+				// 15% chance golden
+				chance := rand(0,100)
+				is_golden := false
+				if chance <= 15{
+					is_golden = true
+				}
+
 				size := rand(10, 30)
 				e := Enemy{
 					pos = tween_create(spawn_pos + Vec2{rand(-20, 20), rand(-20, 20)}),
@@ -293,15 +390,24 @@ update_game :: proc(step: f32) {
 					cur_hp = size,
 					color = tween_create(Colors.white),
 					velocity = glm.normalize(Vec2{rand(-1, 1), rand(-1, 1)}),
+					golden = is_golden,
 				};
 				tween_to(&e.size, 0.2, 4, e.size.original, Ease.Quartic_Out)
+				if is_golden {
+					e.color = tween_create(color_from_rgba(255, 215, 0, 255))
+				}
 
 				append(&Delayed_Enemies, Delayed_Enemy{
 					delay = timer(f32(i) * 0.3 + 4),
 					e = e,
 				})
-
 			}
+
+			if enemy_spawner.time > 0.17 {
+				enemy_spawner.time -= 0.07
+			}
+			spawn_amount_min += 0.3
+			spawn_amount_max += 0.6
 		}
 	}
 
@@ -378,6 +484,12 @@ update_game :: proc(step: f32) {
 			unordered_remove(&Bullets, i)
 		}
 	}
+
+	if lost && (key_pressed(.Enter) || key_pressed(.Space) || gamepad_pressed_once(.A) || mouse_button_pressed_once(.Left)) {
+		init_game()
+	}
+
+
 }
 draw_game :: proc() {
 	using juice
@@ -416,5 +528,11 @@ draw_game :: proc() {
 			draw_text(Fonts.little_guy, s.pos, 40, "!", 0, color = Colors.red, origin = Origin_Center)
 			draw_donut(0, s.pos, 40, 2, color = Colors.red)
 		}
+	}
+
+	if lost {
+		draw_text(Fonts.little_guy, Game_Size / 2 - {0, 20}, 100, "YOU LOST", 0, color = Colors.red, origin = Origin_Center)
+		draw_text(Fonts.little_guy, Game_Size / 2 + Vec2{0, 70}, 40, fmt.tprint("KILLS " , kills), 0, color = Colors.red, origin = Origin_Center)
+		draw_text(Fonts.little_guy, Game_Size / 2 + Vec2{0, 120}, 20, "PRESS ENTER/A/LEFTCLICK TO RESTART", 0, color = Colors.red, origin = Origin_Center)
 	}
 }

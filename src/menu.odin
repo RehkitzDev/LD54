@@ -68,7 +68,7 @@ update_menu :: proc(step: f32) {
 			tween_to(&b.text_size, 0.2, b.text_size.value, b.text_size.original, Ease.Quadratic_Out)
 		}
 
-		if b.ui == components.UI_Interactable.Click {
+		if b.ui == components.UI_Interactable.Click  || gamepad_pressed(.A){
             Game_Scene = 1
 		}
 	}
@@ -81,11 +81,27 @@ draw_menu :: proc() {
 		Fonts.little_guy,
 		{Game_Size.x / 2, 40},
 		30,
-		"Something about limited Space",
+		"KILL CIRCLES",
 		color = Colors.white,
 		origin = Origin_Center,
 		max_width = Game_Size.x / 2,
 	)
+
+	// how to play
+	// draw_text(
+	// 	Fonts.little_guy,
+	// 	{Game_Size.x / 2, Game_Size.y / 2 - 100},
+	// 	12,
+	// 	"how to play:\n" +
+	// 	"kill the circles by clicking on them\n" +
+	// 	"you can also use the keyboard\n" +
+	// 	"to select them\n\n" +
+	// 	"press enter or space to start",
+	// 	color = Colors.white,
+	// 	origin = Origin_Center,
+	// 	max_width = Game_Size.x / 2,
+	// )
+
 
 	draw_text(
 		Fonts.little_guy,
@@ -113,8 +129,8 @@ draw_menu :: proc() {
 			// draw_gradient(b.pos.original + {-50, 5}, {200, 110}, from_color, from_color, to_color, to_color, origin = Origin_Center_Left)
 		}
 
-		rect := collision_rect_from_pos_size(b.pos.original, b.size.value, Origin_Center)
-		draw_quad(0, {rect.x, rect.y}, {rect.w, rect.h}, 0, {1, 0, 0, 0.5}, Origin_Top_Left)
+		// rect := collision_rect_from_pos_size(b.pos.original, b.size.value, Origin_Center)
+		// draw_quad(0, {rect.x, rect.y}, {rect.w, rect.h}, 0, {1, 0, 0, 0.5}, Origin_Top_Left)
 	}
 
 }

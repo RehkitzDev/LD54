@@ -12,11 +12,23 @@ Textures_Struct :: struct{
 load_textures :: proc(){
 	using juice
 }
-Audio : Audio_Struct
-Audio_Struct :: struct{
+Sounds : Sounds_Struct 
+Sounds_Struct :: struct{
+	dead: u32,
+	dead2: u32,
+	hit: u32,
+	hit2: u32,
+	laser: u32,
+	wall: u32,
 }
-load_audio :: proc(){
+load_sounds :: proc(){
 	using juice
+	Sounds.dead = juice.load_sound(#load("../assets/dead.wav"))
+	Sounds.dead2 = juice.load_sound(#load("../assets/dead2.wav"))
+	Sounds.hit = juice.load_sound(#load("../assets/hit.wav"))
+	Sounds.hit2 = juice.load_sound(#load("../assets/hit2.wav"))
+	Sounds.laser = juice.load_sound(#load("../assets/laser.wav"))
+	Sounds.wall = juice.load_sound(#load("../assets/wall.wav"))
 }
 Fonts : Fonts_Struct
 Fonts_Struct :: struct{
@@ -30,16 +42,18 @@ Colors_Struct :: struct{
 	black: juice.Color,
 	white: juice.Color,
 	red: juice.Color,
+	gold : juice.Color,
 }
 Colors : Colors_Struct = {
 	black = juice.Color{0, 0, 0, 1},
 	white = juice.Color{1, 1, 1, 1},
 	red = juice.Color{1, 0, 0, 1},
+	gold = juice.Color{1, 0.8, 0, 1},
 }
 
 Game_Size : juice.Vec2 = {640, 360}
 Game_Camera: juice.Camera
-Game_Scene: int = 1
+Game_Scene: int = 0 
 
 main :: proc() {
 	context = juice.default_context()
@@ -65,13 +79,13 @@ main :: proc() {
 	}
 
 	using juice
-	create_window("Juice", {1280, 720})
+	create_window("Kill Circles", {1280, 720})
 	fb, camera := create_framebuffer(i32(Game_Size.x), i32(Game_Size.y), TexFilter.Nearest)
 	Game_Camera = camera
 
 	load_textures()
 	load_fonts()
-	load_audio()
+	load_sounds()
 
 	init_game()
 
